@@ -53,13 +53,34 @@ La base de datos `zthorken` se crea automáticamente si no existe.
 src/main/java/cl/zthorken/backend/
 ├── config/        Seguridad, Swagger y carga de datos iniciales
 ├── controller/    Controladores REST (/api/v1/...)
+├── dto/           Objetos de entrada y salida de la API
+├── exception/     Errores de negocio y manejo global (400, 404)
 ├── model/         Entidades JPA y enums (Rol, EstadoBoleta)
-└── repository/    Repositorios Spring Data JPA
+├── repository/    Repositorios Spring Data JPA
+└── service/       Lógica de negocio
 src/main/resources/
 ├── application.properties         Configuración común
 ├── application-dev.properties     Perfil dev (H2)
 └── application-mysql.properties   Perfil mysql
 ```
+
+## Endpoints
+Todos bajo `/api/v1`. Se pueden probar desde Swagger UI.
+
+| Recurso | Endpoints |
+|---|---|
+| Categorías | `GET /categorias`, `GET /categorias/{id}`, `POST /categorias`, `PUT /categorias/{id}`, `DELETE /categorias/{id}` |
+| Productos | `GET /productos?categoriaId=&q=&oferta=`, `GET /productos/stock-critico`, `GET /productos/{id}`, `POST /productos`, `PUT /productos/{id}`, `DELETE /productos/{id}` |
+| Boletas | `GET /boletas?usuarioId=`, `GET /boletas/{id}`, `POST /boletas`, `PATCH /boletas/{id}/anular`, `DELETE /boletas/{id}` |
+| Usuarios | `GET /usuarios?rol=`, `GET /usuarios/{id}`, `POST /usuarios`, `PUT /usuarios/{id}`, `DELETE /usuarios/{id}` |
+
+Reglas principales:
+- `POST /boletas` usa el precio vigente (oferta si existe), calcula el total y descuenta stock; si no alcanza responde 400.
+- Anular una boleta devuelve el stock de sus productos.
+- No se puede borrar una categoría con productos. Al borrar un producto o un usuario, sus boletas se conservan.
+- Los errores responden con `status`, `mensaje` y, si son de validación, `campos` con el error de cada campo.
+
+Por ahora los endpoints no piden token; la seguridad por roles se agrega en la tarea 5.
 
 ## Modelo de datos
 `usuario` → `boleta` → `detalle_boleta` ← `producto` ← `categoria`
