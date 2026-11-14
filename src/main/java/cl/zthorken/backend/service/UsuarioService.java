@@ -2,6 +2,7 @@ package cl.zthorken.backend.service;
 
 import java.util.List;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,14 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public UsuarioResponse obtener(Long id) {
         return UsuarioResponse.de(buscar(id));
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse autenticar(String correo, String password) {
+        return usuarioRepo.findByCorreoIgnoreCase(normalizarCorreo(correo))
+            .filter(u -> passwordEncoder.matches(password, u.getPassword()))
+            .map(UsuarioResponse::de)
+            .orElseThrow(() -> new BadCredentialsException("Correo o contraseña incorrectos"));
     }
 
     public UsuarioResponse crear(UsuarioRequest req) {

@@ -19,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jayway.jsonpath.JsonPath;
+
 import cl.zthorken.backend.repository.CategoriaRepository;
 import cl.zthorken.backend.repository.ProductoRepository;
 
@@ -30,6 +32,19 @@ class ApiControllersTest {
     @Autowired MockMvc mvc;
     @Autowired CategoriaRepository categoriaRepo;
     @Autowired ProductoRepository productoRepo;
+
+    /** Header Authorization con un token real obtenido por login. */
+    static String token(MockMvc mvc, String correo, String password) throws Exception {
+        String json = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\":\"%s\",\"password\":\"%s\"}".formatted(correo, password)))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        return "Bearer " + JsonPath.read(json, "$.token");
+    }
+
+    private String admin() throws Exception {
+        return token(mvc, "admin@zthorken.cl", "admin123");
+    }
 
     private Long idCategoria(String nombre) {
         return categoriaRepo.findByNombreIgnoreCase(nombre).orElseThrow().getId();
@@ -68,19 +83,19 @@ class ApiControllersTest {
 
     @Test
     void crudDeCategoria() throws Exception {
-        String json = mvc.perform(post("/api/v1/categorias").contentType(MediaType.APPLICATION_JSON)
+        String json = mvc.perform(post("/api/v1/categorias").header("Authorization", admin()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"Accesorios\",\"imagen\":null}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.nombre").value("Accesorios"))
             .andReturn().getResponse().getContentAsString();
         String id = json.replaceAll(".*\"id\":(\\d+).*", "$1");
 
-        mvc.perform(put("/api/v1/categorias/" + id).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put("/api/v1/categorias/" + id).header("Authorization", admin()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"Accesorios gamer\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.nombre").value("Accesorios gamer"));
 
-        mvc.perform(delete("/api/v1/categorias/" + id))
+        mvc.perform(delete("/api/v1/categorias/" + id).header("Authorization", admin()))
             .andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/categorias/" + id))
             .andExpect(status().isNotFound());
@@ -88,13 +103,13 @@ class ApiControllersTest {
 
     @Test
     void noSeBorraCategoriaConProductos() throws Exception {
-        mvc.perform(delete("/api/v1/categorias/" + idCategoria("Audio")))
+        mvc.perform(delete("/api/v1/categorias/" + idCategoria("Audio")).header("Authorization", admin()))
             .andExpect(status().isBadRequest());
     }
 
     @Test
     void validaLosDatosDelProducto() throws Exception {
-        mvc.perform(post("/api/v1/productos").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/productos").header("Authorization", admin()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"\",\"precio\":-5,\"stock\":1,\"stockCritico\":1}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.campos.nombre").exists())
@@ -104,11 +119,11 @@ class ApiControllersTest {
 
     @Test
     void usuariosNoExponenLaPassword() throws Exception {
-        mvc.perform(get("/api/v1/usuarios"))
+        mvc.perform(get("/api/v1/usuarios").header("Authorization", admin()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(3)))
             .andExpect(jsonPath("$[0]", not(hasKey("password"))));
-        mvc.perform(get("/api/v1/usuarios").param("rol", "VENDEDOR"))
+        mvc.perform(get("/api/v1/usuarios").header("Authorization", admin()).param("rol", "VENDEDOR"))
             .andExpect(jsonPath("$", hasSize(1)));
     }
 
@@ -133,11 +148,11 @@ class ApiControllersTest {
 
         mvc.perform(get("/api/v1/productos/" + teclado)).andExpect(jsonPath("$.stock").value(22));
 
-        mvc.perform(patch("/api/v1/boletas/" + id + "/anular"))
+        mvc.perform(patch("/api/v1/boletas/" + id + "/anular").header("Authorization", admin()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.estado").value("ANULADA"));
         mvc.perform(get("/api/v1/productos/" + teclado)).andExpect(jsonPath("$.stock").value(25));
-        mvc.perform(patch("/api/v1/boletas/" + id + "/anular"))
+        mvc.perform(patch("/api/v1/boletas/" + id + "/anular").header("Authorization", admin()))
             .andExpect(status().isBadRequest());
     }
 
@@ -171,7 +186,7 @@ class ApiControllersTest {
 
     @Test
     void listaBoletasConDetalle() throws Exception {
-        mvc.perform(get("/api/v1/boletas"))
+        mvc.perform(get("/api/v1/boletas").header("Authorization", admin()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].items", hasSize(2)))
