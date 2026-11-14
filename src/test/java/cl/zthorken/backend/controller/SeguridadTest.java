@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -126,6 +127,20 @@ class SeguridadTest {
             .andExpect(jsonPath("$.usuario.rol").value("CLIENTE"));
         mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(NUEVO_CLIENTE))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void clienteEditaSuPerfilSinCambiarSuRol() throws Exception {
+        String body = """
+            {"nombre": "Pedro", "apellidos": "Pérez", "correo": "pedro@correo.cl", "rol": "ADMIN", "comuna": "Maipú"}
+            """;
+        mvc.perform(put("/api/v1/auth/perfil").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/v1/auth/perfil").header("Authorization", pedro()).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.comuna").value("Maipú"))
+            .andExpect(jsonPath("$.rol").value("CLIENTE"));
+        token(mvc, "pedro@correo.cl", "pedro123");
     }
 
     @Test

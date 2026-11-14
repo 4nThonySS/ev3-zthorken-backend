@@ -1,7 +1,9 @@
 package cl.zthorken.backend.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -50,6 +52,19 @@ public class AuthController {
         UsuarioRequest cliente = new UsuarioRequest(req.nombre(), req.apellidos(), req.correo(), req.password(),
             Rol.CLIENTE, req.calle(), req.departamento(), req.region(), req.comuna());
         return conToken(usuarioService.crear(cliente));
+    }
+
+    @PutMapping("/perfil")
+    @Operation(summary = "Editar mis datos",
+        description = "Actualiza al usuario del token. El rol no cambia; la contraseña vacía se mantiene")
+    @ApiResponse(responseCode = "200", description = "Perfil actualizado")
+    @ApiResponse(responseCode = "400", description = "Datos inválidos o correo ya registrado")
+    @ApiResponse(responseCode = "401", description = "Falta el token")
+    public UsuarioResponse perfil(@Valid @RequestBody UsuarioRequest req, Authentication auth) {
+        Long id = (Long) auth.getPrincipal();
+        Rol rolActual = usuarioService.obtener(id).rol();
+        return usuarioService.actualizar(id, new UsuarioRequest(req.nombre(), req.apellidos(), req.correo(),
+            req.password(), rolActual, req.calle(), req.departamento(), req.region(), req.comuna()));
     }
 
     private AuthResponse conToken(UsuarioResponse usuario) {

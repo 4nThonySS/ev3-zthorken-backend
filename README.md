@@ -69,7 +69,7 @@ Todos bajo `/api/v1`. Se pueden probar desde Swagger UI.
 
 | Recurso | Endpoints |
 |---|---|
-| Autenticación | `POST /auth/login`, `POST /auth/register` (crea siempre un `CLIENTE`) |
+| Autenticación | `POST /auth/login`, `POST /auth/register` (crea siempre un `CLIENTE`), `PUT /auth/perfil` (el usuario del token edita sus datos; no cambia su rol) |
 | Categorías | `GET /categorias`, `GET /categorias/{id}`, `POST /categorias`, `PUT /categorias/{id}`, `DELETE /categorias/{id}` |
 | Productos | `GET /productos?categoriaId=&q=&oferta=`, `GET /productos/stock-critico`, `GET /productos/{id}`, `POST /productos`, `PUT /productos/{id}`, `DELETE /productos/{id}` |
 | Boletas | `GET /boletas?usuarioId=`, `GET /boletas/{id}`, `POST /boletas`, `PATCH /boletas/{id}/anular`, `DELETE /boletas/{id}` |
@@ -87,7 +87,7 @@ Reglas principales:
 | Acceso | Endpoints |
 |---|---|
 | Público | Login y registro, `GET` de productos y categorías, `POST /boletas` (compra sin cuenta), `/health` |
-| Cualquier usuario con token | `GET /boletas` y `GET /boletas/{id}`: admin y vendedor ven todas, el cliente solo las suyas |
+| Cualquier usuario con token | `PUT /auth/perfil`; `GET /boletas` y `GET /boletas/{id}`: admin y vendedor ven todas, el cliente solo las suyas |
 | Solo `ADMIN` | Todo lo demás: crear, editar y borrar productos, categorías y usuarios; anular y borrar boletas |
 
 Sin token o con un token inválido, las rutas protegidas responden 401; con un rol sin permiso, 403. Si un usuario con token compra, la boleta queda a su nombre (solo un admin puede indicar otro `usuarioId`).

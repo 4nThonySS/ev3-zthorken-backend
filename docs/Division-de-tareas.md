@@ -2,11 +2,11 @@
 
 Actualizado: 14 nov 2026 · Versión en línea: https://claude.ai/artifact/Kk2UqPJPuSwAfC5FyYQ6f7
 
-**Avance: 5 de 8 tareas terminadas** (✅ = terminada)
+**Avance: 6 de 8 tareas terminadas** (✅ = terminada)
 
 ## Resumen
 
-La EV3 de DSY1104 (40%) pide un backend Spring Boot con base de datos, API REST versionada, Swagger y seguridad JWT por roles, conectado al frontend de Zthorken. El trabajo se divide en 8 tareas; las tareas 1 a 5 ya están terminadas.
+La EV3 de DSY1104 (40%) pide un backend Spring Boot con base de datos, API REST versionada, Swagger y seguridad JWT por roles, conectado al frontend de Zthorken. El trabajo se divide en 8 tareas; las tareas 1 a 6 ya están terminadas.
 
 | Repo | Contenido | Carpeta local |
 | --- | --- | --- |
@@ -18,13 +18,13 @@ Roles del sistema: **Administrador** (acceso total), **Vendedor** (solo ver prod
 
 ## Cumplimiento de la pauta
 
-De los 26 puntos del Anexo 1, el proyecto cumple 9, cumple 5 de forma parcial y le faltan 12. El backend está casi listo; lo que falta es la base de datos real, la seguridad, la conexión con el frontend y los documentos de entrega.
+De los 26 puntos del Anexo 1, el proyecto cumple 9, cumple 5 de forma parcial y le faltan 12. El backend y el frontend ya están integrados; lo que falta es la base de datos real, los colaboradores y los documentos de entrega.
 
 Según los 4 criterios de evaluación:
 
 - **Calidad del backend:** estructura, lógica y tests completos; falta conectarlo a MySQL u Oracle Cloud en vez de H2.
-- **Integración REST:** la API está documentada en Swagger, pero el frontend todavía no la usa.
-- **Seguridad:** login con JWT y permisos por rol en el backend; falta usarlos desde el frontend.
+- **Integración REST:** la API está documentada en Swagger y el frontend la usa con `fetch` y el token JWT.
+- **Seguridad:** login con JWT y permisos por rol en el backend, y vistas por rol en el frontend.
 - **Colaboración y documentación:** el repo existe, pero todos los commits son de una sola cuenta y faltan los 4 documentos.
 
 | # | Requisito de la pauta | Cumple | Evidencia o qué falta | Tarea |
@@ -38,17 +38,17 @@ Según los 4 criterios de evaluación:
 | 7 | Controladores REST con CRUD | Sí | Categorías, productos, boletas y usuarios | 4 |
 | 8 | Rutas de la API versionadas | Sí | Todo bajo `/api/v1` | 4 |
 | 9 | Swagger documenta los endpoints | Sí | `/swagger-ui.html`, con `@Operation` y `@ApiResponse` en cada endpoint | 4 |
-| 10 | El frontend llama al backend con fetch o axios | No | El frontend sigue leyendo `localStorage` (`src/data/db.js`); no tiene axios ni fetch | 6 |
-| 11 | Comunicación REST efectiva y datos bien manejados | No | Depende del punto 10 | 6 |
+| 10 | El frontend llama al backend con fetch o axios | Sí | `src/api.jsx` (fetch + token) y el hook `useApi` en todas las vistas | 6 |
+| 11 | Comunicación REST efectiva y datos bien manejados | Sí | Estados de carga y error, mensajes del backend en los formularios; 198 tests del frontend con un backend falso | 6 |
 | 12 | Spring Security gestiona la autenticación por roles | Sí | `SecurityConfig` con reglas por rol para cada endpoint | 5 |
 | 13 | JWT para autenticación con tokens | Sí | `POST /auth/login` y `/auth/register` entregan el token; `JwtAuthFilter` lo valida en cada petición | 5 |
-| 14 | Restringir funciones según los permisos del usuario | Parcial | El backend responde 401/403 según el rol; falta ocultar lo no permitido en el frontend | 5, 6 |
+| 14 | Restringir funciones según los permisos del usuario | Sí | El backend responde 401/403 y el frontend oculta lo que cada rol no puede usar | 5, 6 |
 | 15 | Repositorio remoto en GitHub para el backend | Sí | [ev3-zthorken-backend](https://github.com/4nThonySS/ev3-zthorken-backend), público | 1 |
 | 16 | Commits con comentarios claros y coherentes | Parcial | Solo 2 commits en el backend, cada uno agrupa 2 tareas. Desde ahora conviene un commit por cambio, con mensaje descriptivo | Todas |
 | 17 | Colaboración y tareas repartidas de forma equitativa | No | Los 3 commits (2 backend, 1 frontend) son de 4nThonySS. Faltan los colaboradores y que cada integrante haga commits de sus tareas | 5 a 8 |
-| 18 | Administrador con acceso total | Parcial | La API tiene todas las operaciones; falta login y panel conectado | 5, 6 |
-| 19 | Vendedor solo ve productos y órdenes con su detalle; lo demás no aparece | Parcial | El backend ya lo restringe; falta ocultar el resto en su vista | 5, 6 |
-| 20 | Cliente solo accede a la tienda | Parcial | El backend solo le deja ver la tienda y sus boletas; falta la vista | 5, 6 |
+| 18 | Administrador con acceso total | Sí | Login real y panel completo contra la API | 5, 6 |
+| 19 | Vendedor solo ve productos y órdenes con su detalle; lo demás no aparece | Sí | Su panel solo muestra Órdenes, Productos (sin editar) y Perfil; las demás rutas lo redirigen | 5, 6 |
+| 20 | Cliente solo accede a la tienda | Sí | Si entra a `/admin` vuelve al inicio; el backend solo le entrega sus boletas | 5, 6 |
 | 21 | Documento ERS (requerimientos, herramientas y propuesta) | No | No iniciado | 7 |
 | 22 | Manual de usuario con pantallazos detallados | No | No iniciado; necesita el frontend integrado | 7 |
 | 23 | Documentación de APIs | Parcial | Swagger y tabla de endpoints en el README; falta el documento de entrega | 7 |
@@ -69,7 +69,7 @@ Cada integrante debería hacer commits de al menos una tarea desde su cuenta: en
 | 3 | Servicios con lógica de negocio y tests | backend | 2 | 4nThonySS | ✅ Terminada |
 | 4 | Controladores REST `/api/v1` y Swagger | backend | 3 | 4nThonySS | ✅ Terminada |
 | 5 | Seguridad: Spring Security, JWT y roles | backend | 4 | Por asignar | ✅ Terminada |
-| 6 | Integración del frontend con axios, login y vistas por rol | frontend | 4, 5 | Por asignar | Pendiente |
+| 6 | Integración del frontend con fetch, login y vistas por rol | frontend | 4, 5 | Por asignar | ✅ Terminada |
 | 7 | Documentos: ERS, manual de usuario, APIs e integración | docs | 6 | Por asignar | Pendiente |
 | 8 | Colaboradores, `.zip` y presentación | entrega | 7 | Todo el equipo | Pendiente |
 
@@ -116,11 +116,13 @@ Cada integrante debería hacer commits de al menos una tarea desde su cuenta: en
 - [x] 8 tests de seguridad (`SeguridadTest`): 49 tests en total.
 - **Terminado:** sin token responde 401/403 y cada rol accede solo a lo suyo, comprobado con tests.
 
-### 6. Integración con el frontend
+### ✅ 6. Integración con el frontend (terminada)
 
-- [ ] Cliente axios con la URL del backend y el token en el header `Authorization`.
-- [ ] Reemplazar los datos de `src/data` por llamadas a la API; login real y guardado del token.
-- [ ] Panel de administración y vista de vendedor que muestran solo lo permitido según el rol.
+- [x] Cliente `fetch` (`src/api.jsx`) con la URL del backend (`VITE_API_URL`) y el token en el header `Authorization`. Se usó fetch en vez de axios para no sumar una dependencia; la pauta acepta cualquiera de los dos.
+- [x] Productos, categorías, usuarios y órdenes vienen de la API; login y registro reales con el token guardado. El blog y los mensajes de contacto siguen en localStorage porque el backend no tiene esas tablas.
+- [x] Panel de administración completo y vista de vendedor (Órdenes, Productos sin editar y Perfil).
+- [x] Nuevo endpoint `PUT /api/v1/auth/perfil` para que cada usuario edite sus datos (checkout y perfil) sin poder cambiarse el rol.
+- [x] Tests del frontend reescritos con un backend falso (`src/test/backendFalso.js`): 198 tests y 95% de cobertura. Backend: 50 tests.
 - **Terminado:** la tienda, el carrito, la compra y los paneles funcionan contra el backend.
 
 ### 7. Documentación
@@ -156,5 +158,5 @@ La pauta pide 8 entregables más una presentación de 15 minutos y 5 de pregunta
 - **Base de datos:** MySQL no está instalado; todo corre en H2. Hay que instalar MySQL o usar Oracle Cloud antes de la demo.
 - **Colaboradores:** faltan los usuarios de GitHub del equipo para invitarlos a los dos repos.
 - **Commits:** la pauta evalúa el reparto equitativo y en la ronda de preguntas se revisan los cambios de cada uno. Las tareas 5 a 7 deberían subirlas otros integrantes desde sus cuentas, con commits pequeños y mensajes claros.
-- **Responsables:** asignar las tareas 6 y 7 en la tabla de Tareas.
+- **Responsables:** asignar la tarea 7 en la tabla de Tareas.
 - **Carpetas:** renombrar a `frontend/` y `backend/` cuando VS Code esté cerrado.
