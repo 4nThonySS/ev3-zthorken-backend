@@ -24,9 +24,9 @@ mvnw.cmd spring-boot:run        # Windows CMD / PowerShell
 
 **Perfil MySQL:**
 ```bash
-DB_USER=root DB_PASSWORD=tu_clave ./mvnw spring-boot:run -Dspring-boot.run.profiles=mysql
+JWT_SECRET=una_clave_de_al_menos_32_caracteres DB_USER=root DB_PASSWORD=tu_clave ./mvnw spring-boot:run -Dspring-boot.run.profiles=mysql
 ```
-La base de datos `zthorken` se crea automáticamente si no existe.
+La base de datos `zthorken` se crea automáticamente si no existe. Fuera del perfil `dev` la variable `JWT_SECRET` es obligatoria: sin ella la aplicación no arranca.
 
 ## URLs útiles
 | URL | Descripción |
@@ -40,7 +40,8 @@ La base de datos `zthorken` se crea automáticamente si no existe.
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | `dev` | `dev` o `mysql` |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | localhost / root / vacío | Conexión MySQL |
-| `JWT_SECRET` | clave de desarrollo | Clave para firmar los tokens (mínimo 32 caracteres) |
+| `JWT_SECRET` | clave de desarrollo solo en `dev`; obligatoria en `mysql` | Clave para firmar los tokens (mínimo 32 caracteres) |
+| `JWT_EXPIRATION_MS` | `86400000` (24 h) | Duración de cada token |
 | `CORS_ORIGINS` | `http://localhost:5173` | Origen del frontend |
 
 ## Tests
@@ -69,7 +70,7 @@ Todos bajo `/api/v1`. Se pueden probar desde Swagger UI.
 
 | Recurso | Endpoints |
 |---|---|
-| Autenticación | `POST /auth/login`, `POST /auth/register` (crea siempre un `CLIENTE`), `PUT /auth/perfil` (el usuario del token edita sus datos; no cambia su rol) |
+| Autenticación | `POST /auth/login`, `POST /auth/register` (crea siempre un `CLIENTE`), `POST /auth/refresh` (renueva el token), `PUT /auth/perfil` (el usuario del token edita sus datos; no cambia su rol) |
 | Categorías | `GET /categorias`, `GET /categorias/{id}`, `POST /categorias`, `PUT /categorias/{id}`, `DELETE /categorias/{id}` |
 | Productos | `GET /productos?categoriaId=&q=&oferta=`, `GET /productos/stock-critico`, `GET /productos/{id}`, `POST /productos`, `PUT /productos/{id}`, `DELETE /productos/{id}` |
 | Boletas | `GET /boletas?usuarioId=`, `GET /boletas/{id}`, `POST /boletas`, `PATCH /boletas/{id}/anular`, `DELETE /boletas/{id}` |
@@ -82,12 +83,17 @@ Reglas principales:
 - Los errores responden con `status`, `mensaje` y, si son de validación, `campos` con el error de cada campo.
 
 ## Seguridad (JWT)
-`POST /api/v1/auth/login` con `{"correo", "password"}` devuelve `{"token", "usuario"}`. El token se envía en cada petición como `Authorization: Bearer <token>` y dura 24 horas (`JWT_EXPIRATION_MS`). En Swagger se pega en el botón **Authorize**.
+`POST /api/v1/auth/login` con `{"correo", "password"}` devuelve `{"token", "expiraEn", "usuario"}`. El token se envía en cada petición como `Authorization: Bearer <token>` y dura 24 horas (`JWT_EXPIRATION_MS`). En Swagger se pega en el botón **Authorize**.
+
+Cómo se protege el token:
+- **Generación:** firmado con HMAC-SHA256 y una clave de al menos 32 caracteres que viene de `JWT_SECRET`. Lleva el id del usuario, su rol, el emisor `zthorken-api`, un identificador único y la fecha de expiración. Las contraseñas se guardan cifradas con BCrypt y nunca salen en las respuestas.
+- **Verificación:** `JwtAuthFilter` revisa la firma, el emisor y la expiración en cada petición. Después busca al usuario en la base de datos y usa el rol guardado ahí, así que un cambio de rol se aplica al instante y el token de un usuario eliminado deja de funcionar.
+- **Renovación:** `POST /auth/refresh` con un token vigente entrega uno nuevo con 24 horas más. El frontend lo pide solo antes de que venza; un token vencido no se puede renovar y obliga a iniciar sesión de nuevo.
 
 | Acceso | Endpoints |
 |---|---|
 | Público | Login y registro, `GET` de productos y categorías, `POST /boletas` (compra sin cuenta), `/health` |
-| Cualquier usuario con token | `PUT /auth/perfil`; `GET /boletas` y `GET /boletas/{id}`: admin y vendedor ven todas, el cliente solo las suyas |
+| Cualquier usuario con token | `POST /auth/refresh`, `PUT /auth/perfil`; `GET /boletas` y `GET /boletas/{id}`: admin y vendedor ven todas, el cliente solo las suyas |
 | Solo `ADMIN` | Todo lo demás: crear, editar y borrar productos, categorías y usuarios; anular y borrar boletas |
 
 Sin token o con un token inválido, las rutas protegidas responden 401; con un rol sin permiso, 403. Si un usuario con token compra, la boleta queda a su nombre (solo un admin puede indicar otro `usuarioId`).
