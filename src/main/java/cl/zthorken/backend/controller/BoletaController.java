@@ -97,7 +97,6 @@ public class BoletaController {
         return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_" + rol));
     }
 
-    /** El JwtAuthFilter deja el id del usuario como principal. */
     private static Long idDe(Authentication auth) {
         return (Long) auth.getPrincipal();
     }

@@ -33,7 +33,6 @@ class ApiControllersTest {
     @Autowired CategoriaRepository categoriaRepo;
     @Autowired ProductoRepository productoRepo;
 
-    /** Header Authorization con un token real obtenido por login. */
     static String token(MockMvc mvc, String correo, String password) throws Exception {
         String json = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"password\":\"%s\"}".formatted(correo, password)))
