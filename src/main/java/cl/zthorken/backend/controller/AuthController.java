@@ -67,7 +67,17 @@ public class AuthController {
             req.password(), rolActual, req.calle(), req.departamento(), req.region(), req.comuna()));
     }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "Renovar el token",
+        description = "Con un token vigente entrega uno nuevo con la expiración reiniciada y los datos actuales del usuario")
+    @ApiResponse(responseCode = "200", description = "Token renovado")
+    @ApiResponse(responseCode = "401", description = "Falta el token, venció o el usuario ya no existe")
+    public AuthResponse refresh(Authentication auth) {
+        return conToken(usuarioService.obtener((Long) auth.getPrincipal()));
+    }
+
     private AuthResponse conToken(UsuarioResponse usuario) {
-        return new AuthResponse(jwtService.generar(usuario.id(), usuario.rol()), usuario);
+        JwtService.TokenGenerado generado = jwtService.generar(usuario.id(), usuario.rol());
+        return new AuthResponse(generado.token(), generado.expiraEn(), usuario);
     }
 }

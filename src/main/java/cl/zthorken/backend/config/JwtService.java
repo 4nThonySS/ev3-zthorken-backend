@@ -2,6 +2,7 @@ package cl.zthorken.backend.config;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -16,6 +17,8 @@ import io.jsonwebtoken.security.Keys;
 @Service
 public class JwtService {
 
+    private static final String EMISOR = "zthorken-api";
+
     private final SecretKey key;
     private final long expiracionMs;
 
@@ -25,19 +28,25 @@ public class JwtService {
         this.expiracionMs = expiracionMs;
     }
 
-    public String generar(Long usuarioId, Rol rol) {
+    public TokenGenerado generar(Long usuarioId, Rol rol) {
         Date ahora = new Date();
-        return Jwts.builder()
+        Date expira = new Date(ahora.getTime() + expiracionMs);
+        String token = Jwts.builder()
+            .id(UUID.randomUUID().toString())
+            .issuer(EMISOR)
             .subject(usuarioId.toString())
             .claim("rol", rol.name())
             .issuedAt(ahora)
-            .expiration(new Date(ahora.getTime() + expiracionMs))
+            .expiration(expira)
             .signWith(key)
             .compact();
+        return new TokenGenerado(token, expira.getTime());
     }
 
-    /** Devuelve los datos del token; lanza JwtException si la firma no calza o venció. */
     public Claims validar(String token) {
-        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser().verifyWith(key).requireIssuer(EMISOR).build().parseSignedClaims(token).getPayload();
+    }
+
+    public record TokenGenerado(String token, long expiraEn) {
     }
 }

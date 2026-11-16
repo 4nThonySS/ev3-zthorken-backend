@@ -8,23 +8,21 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import io.jsonwebtoken.Claims;
+import cl.zthorken.backend.repository.UsuarioRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Lee el header "Authorization: Bearer <token>" y, si el token es válido, deja autenticado al usuario
- * con su id como principal y su rol como ROLE_ADMIN, ROLE_VENDEDOR o ROLE_CLIENTE.
- */
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UsuarioRepository usuarioRepo;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UsuarioRepository usuarioRepo) {
         this.jwtService = jwtService;
+        this.usuarioRepo = usuarioRepo;
     }
 
     @Override
@@ -33,14 +31,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             try {
-                // ponytail: el rol viaja en el token y no se relee de la BD; un cambio de rol o un usuario
-                // borrado se nota recién al vencer el token. Buscar el usuario aquí si eso importa.
-                Claims claims = jwtService.validar(header.substring(7));
-                var auth = new UsernamePasswordAuthenticationToken(Long.valueOf(claims.getSubject()), null,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + claims.get("rol", String.class))));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                Long id = Long.valueOf(jwtService.validar(header.substring(7)).getSubject());
+                usuarioRepo.findById(id).ifPresent(usuario -> SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(usuario.getId(), null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name())))));
             } catch (JwtException | IllegalArgumentException e) {
-                // Token inválido o vencido: la petición sigue como anónima y las rutas protegidas responden 401.
+                SecurityContextHolder.clearContext();
             }
         }
         chain.doFilter(request, response);

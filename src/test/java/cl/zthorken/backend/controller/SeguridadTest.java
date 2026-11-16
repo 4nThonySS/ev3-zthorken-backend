@@ -1,6 +1,7 @@
 package cl.zthorken.backend.controller;
 
 import static cl.zthorken.backend.controller.ApiControllersTest.token;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,8 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.jayway.jsonpath.JsonPath;
 
+import cl.zthorken.backend.model.Rol;
+import cl.zthorken.backend.model.Usuario;
 import cl.zthorken.backend.repository.BoletaRepository;
 import cl.zthorken.backend.repository.ProductoRepository;
+import cl.zthorken.backend.repository.UsuarioRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -31,6 +35,67 @@ class SeguridadTest {
     @Autowired MockMvc mvc;
     @Autowired BoletaRepository boletaRepo;
     @Autowired ProductoRepository productoRepo;
+    @Autowired UsuarioRepository usuarioRepo;
+
+    private Usuario registrarAna() throws Exception {
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(NUEVO_CLIENTE))
+            .andExpect(status().isCreated());
+        return usuarioRepo.findByCorreoIgnoreCase("ana@correo.cl").orElseThrow();
+    }
+
+    @Test
+    void loginEntregaLaFechaDeExpiracion() throws Exception {
+        long antes = System.currentTimeMillis();
+        String json = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\":\"admin@zthorken.cl\",\"password\":\"admin123\"}"))
+            .andReturn().getResponse().getContentAsString();
+        long expiraEn = ((Number) JsonPath.read(json, "$.expiraEn")).longValue();
+        assertThat(expiraEn).isGreaterThan(antes);
+    }
+
+    @Test
+    void refreshEntregaUnTokenNuevoQueFunciona() throws Exception {
+        String original = vendedor();
+        String json = mvc.perform(post("/api/v1/auth/refresh").header("Authorization", original))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token").isNotEmpty())
+            .andExpect(jsonPath("$.expiraEn").isNumber())
+            .andExpect(jsonPath("$.usuario.rol").value("VENDEDOR"))
+            .andReturn().getResponse().getContentAsString();
+        String nuevo = "Bearer " + JsonPath.read(json, "$.token");
+        assertThat(nuevo).isNotEqualTo(original);
+        mvc.perform(get("/api/v1/boletas").header("Authorization", nuevo)).andExpect(status().isOk());
+    }
+
+    @Test
+    void refreshSinTokenOConTokenInvalidoDevuelve401() throws Exception {
+        mvc.perform(post("/api/v1/auth/refresh")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/auth/refresh").header("Authorization", "Bearer no.es.un.token"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void elCambioDeRolSeAplicaSinEsperarQueVenzaElToken() throws Exception {
+        Usuario ana = registrarAna();
+        String tokenAna = token(mvc, "ana@correo.cl", "ana123");
+        mvc.perform(get("/api/v1/usuarios").header("Authorization", tokenAna)).andExpect(status().isForbidden());
+
+        ana.setRol(Rol.ADMIN);
+        usuarioRepo.saveAndFlush(ana);
+        mvc.perform(get("/api/v1/usuarios").header("Authorization", tokenAna)).andExpect(status().isOk());
+    }
+
+    @Test
+    void elTokenDeUnUsuarioEliminadoDejaDeFuncionar() throws Exception {
+        Usuario ana = registrarAna();
+        String tokenAna = token(mvc, "ana@correo.cl", "ana123");
+        mvc.perform(get("/api/v1/boletas").header("Authorization", tokenAna)).andExpect(status().isOk());
+
+        usuarioRepo.delete(ana);
+        usuarioRepo.flush();
+        mvc.perform(get("/api/v1/boletas").header("Authorization", tokenAna)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/auth/refresh").header("Authorization", tokenAna)).andExpect(status().isUnauthorized());
+    }
 
     private static final String NUEVO_CLIENTE = """
         {"nombre": "Ana", "apellidos": "Rojas", "correo": "ana@correo.cl", "password": "ana123", "rol": "ADMIN"}
